@@ -8,7 +8,7 @@ from PIL import Image
 import torch
 
 class DogCatDataset(Dataset):
-    def __init__(self, dataframe, img_dir, transform=None, target_size=(224, 224)):
+    def __init__(self, dataframe, img_dir, transform=None, target_size=(112, 112)):
         self.dataframe = dataframe
         self.img_dir = img_dir
         self.transform = transform
