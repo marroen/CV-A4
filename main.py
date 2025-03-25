@@ -4,6 +4,9 @@ from torchvision import transforms
 import torch
 from sklearn.model_selection import train_test_split
 
+from model import LittleYOLO
+from train_eval_fns import train_model, evaluate_model
+
 def main():
     print("Hello World!")
     dataset_path = check_dataset()
@@ -40,6 +43,28 @@ def main():
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+
+    # Define training attributes
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    criterion = nn.CrossEntropyLoss()
+    model = LittleYOLO()
+
+    # TODO must update train_eval_fns.py for the following to work
+    
+    '''
+    print(f'\nTraining Model')
+    model = train_model(model, train_loader, val_loader, device, criterion, save=True)
+    
+    # First evaluate on validation set
+    val_loss, val_acc = evaluate_model(model, val_loader, device, criterion)
+    print(f'Validation Results:')
+    print(f'Loss: {val_loss:.4f}, Accuracy: {val_acc:.2f}%')
+    
+    # Then evaluate on test set
+    test_loss, test_acc = evaluate_model(model, test_loader, device, criterion)
+    print(f'Test Results:')
+    print(f'Loss: {test_loss:.4f}, Accuracy: {test_acc:.2f}%')
+    '''
 
 if __name__ == "__main__":
     main()
