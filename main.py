@@ -2,7 +2,9 @@ from dataset import check_dataset, parse_xml_annotations, DogCatDataset
 import os
 from torchvision import transforms
 import torch
+import torch.nn as nn
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report
 
 from model import LittleYOLO
 from train_eval_fns import train_model, evaluate_model
