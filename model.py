@@ -48,29 +48,29 @@ class LittleYOLO(nn.Module):
         # Kaiming Initialization
         for m in self.modules():
             if isinstance(m, (nn.Conv2d, nn.Linear)):
-                nn.init.kaiming_uniform_(m.weight, nonlinearity='relu')
+                nn.init.kaiming_uniform_(m.weight, nonlinearity='leaky_relu')
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
 
     def forward(self, x):
 
-        x = F.relu(self.bn1(self.conv1(x)))
+        x = F.leaky_relu(self.bn1(self.conv1(x)))
         x = self.pool1(x)
         
-        x = F.relu(self.bn2(self.conv2(x)))
+        x = F.leaky_relu(self.bn2(self.conv2(x)))
         x = self.pool2(x)
 
-        x = F.relu(self.bn3(self.conv3(x)))
+        x = F.leaky_relu(self.bn3(self.conv3(x))) 
         x = self.pool3(x)
 
-        x = F.relu(self.bn4(self.conv4(x)))
+        x = F.leaky_relu(self.bn4(self.conv4(x)))
         x = self.pool4(x)
 
-        x = F.relu(self.bn5(self.conv5(x)))
+        x = F.leaky_relu(self.bn5(self.conv5(x)))
 
         x = x.view(x.size(0), -1) # Flatten
         x = self.dropout(x) # Dropout
-        x = F.relu(self.fc1(x)) # FC
+        x = F.leaky_relu(self.fc1(x)) # FC
         x = torch.sigmoid(self.fc_out(x))  # Output with sigmoid activation
 
         return x
