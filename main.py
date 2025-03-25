@@ -40,6 +40,46 @@ def main():
     val_dataset = DogCatDataset(val_df, img_dir, transform=transform)
     test_dataset = DogCatDataset(test_df, img_dir, transform=transform)
 
+    # CHOICE TASK 6
+    # Takes a dataset, and adds a color jittered, autoconstrasted, and grayscaled version of each image to the dataset
+    def augment_dataset(dataset):
+
+        augmented_images = []
+        unchanged_labels = []
+        unchanged_bboxes = []
+
+        color_jitter = transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2)
+
+        # Apply transformations on each image in dataset
+        for image, label, bbox in dataset:
+
+            augmented_images.append(image) # Keep original image
+
+            augmented_images.append(color_jitter(image)) # Color jitter
+
+            contrasted = transforms.functional.autocontrast(image) # Autocontrast
+            augmented_images.append(contrasted)
+
+            grayscaled = transforms.functional.rgb_to_grayscale(image, num_output_channels=3) # Grayscale
+            augmented_images.append(grayscaled)
+
+            # Labels and bboxes unchanged
+            unchanged_labels.extend([label] * 4)
+            unchanged_bboxes.extend([bbox] * 4)
+
+        # Recombine into dataset
+        augmented_dataset = torch.utils.data.TensorDataset(
+            torch.stack(augmented_images),
+            torch.stack(unchanged_labels),
+            torch.stack(unchanged_bboxes)
+        )
+
+        return augmented_dataset
+    
+    print("Augmenting training data: please wait...")
+    train_dataset = augment_dataset(train_dataset)
+    print("Augmentation complete!")
+
     # DataLoaders
     batch_size = 32
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
