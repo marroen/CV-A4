@@ -2,3 +2,4 @@ dataset.zip
 dataset/
 annotations/
 images/
+__pycache__/

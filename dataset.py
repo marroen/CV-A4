@@ -8,12 +8,14 @@ from PIL import Image
 import torch
 
 class DogCatDataset(Dataset):
-    def __init__(self, dataframe, img_dir, transform=None, target_size=(112, 112)):
+    def __init__(self, dataframe, img_dir, transform=None, target_size=(112, 112), grid_size=7):
         self.dataframe = dataframe
         self.img_dir = img_dir
         self.transform = transform
         self.target_size = target_size
         self.label_map = {'cat': 0, 'dog': 1}
+        self.grid_size = grid_size
+        self.num_classes = 2
 
     def __len__(self):
         return len(self.dataframe)
@@ -44,7 +46,41 @@ class DogCatDataset(Dataset):
         if self.transform:
             image = self.transform(image)
         
-        return image, torch.tensor(label), torch.tensor(bbox, dtype=torch.float32)
+        # Convert to YOLO target format
+        target = self._create_yolo_target(bbox, label)
+        
+        return image, target
+    
+    def _create_yolo_target(self, bbox, label):
+        """
+        Convert bbox & label to YOLO grid format
+        Returns tensor: [S, S, 5+C]
+        """
+        S = self.grid_size
+        target = torch.zeros(S, S, 5 + self.num_classes)
+
+        # Convert bbox to cell-relative coordinates
+        x_center = (bbox[0] + bbox[2]) / 2  # (xmin + xmax)/2
+        y_center = (bbox[1] + bbox[3]) / 2  # (ymin + ymax)/2
+        w = bbox[2] - bbox[0]               # width
+        h = bbox[3] - bbox[1]               # height
+        
+        # Calculate grid cell indices
+        cell_x = int(x_center // (self.target_size[0] / S))
+        cell_y = int(y_center // (self.target_size[1] / S))
+        
+        # Normalize coordinates relative to cell
+        x_center_cell = (x_center - cell_x * (self.target_size[0]/S)) / (self.target_size[0]/S)
+        y_center_cell = (y_center - cell_y * (self.target_size[1]/S)) / (self.target_size[1]/S)
+        w_norm = w / self.target_size[0]
+        h_norm = h / self.target_size[1]
+
+        # Assign to target tensor
+        target[cell_y, cell_x, :4] = torch.tensor([x_center_cell, y_center_cell, w_norm, h_norm])
+        target[cell_y, cell_x, 4] = 1.0  # object confidence
+        target[cell_y, cell_x, 5 + label] = 1.0  # one-hot class
+        
+        return target
 
 def check_dataset():
     # Download dataset
