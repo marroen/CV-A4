@@ -2,4 +2,4 @@
 
 - [x] dataset loaded
 - [x] model created
-- [ ] loss implemented
+- [x] loss implemented
