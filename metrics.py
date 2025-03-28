@@ -43,7 +43,7 @@ def compute_iou(box1, box2):
     
     return intersection / union
 
-def process_predictions(preds, confidence_threshold=0.5, S=7, B=1, C=2):
+def process_predictions(preds, confidence_threshold=0.3, S=7, B=1, C=2):
     """
     Convert raw model output to detection format
     Args:

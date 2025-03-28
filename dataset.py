@@ -6,6 +6,7 @@ import xml.etree.ElementTree as ET
 from torch.utils.data import Dataset
 from PIL import Image
 import torch
+import matplotlib.pyplot as plt
 
 class DogCatDataset(Dataset):
     def __init__(self, dataframe, img_dir, transform=None, target_size=(112, 112), grid_size=7):
@@ -131,3 +132,37 @@ def parse_xml_annotations(annotations_dir):
         })
     
     return pd.DataFrame(annotations)
+
+def visualize_sample(dataset, index=0):
+    image, target = dataset[index]
+    image = image.permute(1, 2, 0)  # Convert CxHxW to HxWxC
+    image = image * torch.tensor([0.229, 0.224, 0.225]) + torch.tensor([0.485, 0.456, 0.406])  # Denormalize
+    image = torch.clamp(image, 0, 1)
+    
+    # Find the cell with an object
+    obj_cells = torch.where(target[..., 4] == 1)
+    if len(obj_cells[0]) > 0:
+        cell_y, cell_x = obj_cells[0][0], obj_cells[1][0]
+        box = target[cell_y, cell_x, :4].numpy()
+        label = torch.argmax(target[cell_y, cell_x, 5:]).item()
+        
+        # Convert box to image coordinates
+        cell_size = 112 / 7
+        x_center = (cell_x * cell_size) + (box[0] * cell_size)
+        y_center = (cell_y * cell_size) + (box[1] * cell_size)
+        width = box[2] * 112
+        height = box[3] * 112
+        
+        # Draw bounding box
+        xmin = int(x_center - width/2)
+        ymin = int(y_center - height/2)
+        xmax = int(x_center + width/2)
+        ymax = int(y_center + height/2)
+        
+        plt.imshow(image)
+        plt.gca().add_patch(plt.Rectangle((xmin, ymin), xmax-xmin, ymax-ymin, fill=False, edgecolor='red', linewidth=2))
+        plt.title(f"Class: {'cat' if label == 0 else 'dog'}")
+        plt.axis('off')
+        plt.show()
+    else:
+        print("No object in this sample!")

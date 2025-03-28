@@ -5,7 +5,7 @@ import csv
 from metrics import compute_iou, process_predictions, process_targets, calculate_map
 
 # Train model
-def train_model(model, train_loader, val_loader, device, criterion, optimizer, patience=5, save=False):
+def train_model(model, train_loader, val_loader, device, criterion, optimizer, max_epochs=3, patience=5, save=False):
     model = model.to(device)
     best_loss = float('inf')
     epochs_no_improve = 0
@@ -20,7 +20,6 @@ def train_model(model, train_loader, val_loader, device, criterion, optimizer, p
                             'box_loss', 'conf_loss', 'class_loss', 'noobj_loss'])
 
     # Training loop with early stopping
-    max_epochs = 100  # Increased for early stopping
     for epoch in range(max_epochs):
         model.train()
         train_total_loss = 0.0

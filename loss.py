@@ -45,7 +45,6 @@ class YOLOLoss(nn.Module):
         
         return inter_area / (union_area + 1e-6)
 
-    # TODO: Revise if this is source of bad mAP@0.5
     def forward(self, preds, targets):
         # Reshape tensors
         preds = preds.reshape(-1, self.S, self.S, self.B*5 + self.C)
@@ -67,16 +66,16 @@ class YOLOLoss(nn.Module):
         # Box coordinates (x,y,w,h)
         box_loss = F.mse_loss(obj_preds[:, :4], obj_targets[:, :4], reduction='sum') * self.λ_coord
         
-        # Object confidence
-        obj_conf_loss = F.mse_loss(obj_preds[:, 4], obj_targets[:, 4], reduction='sum')
-        
-        # Class prediction
-        class_loss = F.mse_loss(obj_preds[:, 5:], obj_targets[:, 5:], reduction='sum')
+        # Use Binary-Cross-Entropy for confidence and class losses
+        obj_conf_loss = F.binary_cross_entropy(obj_preds[:, 4], obj_targets[:, 4], reduction='sum')
+        class_loss = F.binary_cross_entropy(obj_preds[:, 5:], obj_targets[:, 5:], reduction='sum')
 
         # --- No-Object Loss ---
         noobj_preds = preds[noobj_mask]
         noobj_targets = targets[noobj_mask]
-        noobj_conf_loss = F.mse_loss(noobj_preds[:, 4], noobj_targets[:, 4], reduction='sum') * self.λ_noobj
+
+        # Also use BCE for no-object confidence loss
+        noobj_conf_loss = F.binary_cross_entropy(noobj_preds[:, 4], noobj_targets[:, 4], reduction='sum') * self.λ_noobj
 
         # Total loss
         total_loss = (box_loss + obj_conf_loss + class_loss + noobj_conf_loss) / targets.size(0)  # Batch norm
