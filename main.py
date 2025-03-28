@@ -1,4 +1,4 @@
-from dataset import check_dataset, parse_xml_annotations, DogCatDataset
+from dataset import check_dataset, parse_xml_annotations, DogCatDataset, visualize_sample
 import os
 from torchvision import transforms
 import torch
@@ -11,6 +11,8 @@ from model import LittleYOLO
 from loss import YOLOLoss
 from train_eval_fns import train_model, evaluate_model
 import xml.etree.ElementTree as ET
+
+from torchinfo import summary
 
 
 def yolo_collate(batch):
@@ -71,6 +73,15 @@ def main():
     val_dataset = DogCatDataset(val_df, img_dir, transform=transform)
     test_dataset = DogCatDataset(test_df, img_dir, transform=transform)
 
+    # After creating train_dataset, val_dataset, test_dataset:
+    print("\nDataset Sizes:")
+    print(f"Train: {len(train_dataset)} samples")
+    print(f"Val: {len(val_dataset)} samples")
+    print(f"Test: {len(test_dataset)} samples")
+    
+    print("\nOriginal Train Sample:")
+    visualize_sample(train_dataset, index=0)
+
     # CHOICE TASK 6
     # Takes a dataset, and adds a color jittered, autoconstrasted, and grayscaled version of each image to the dataset
     def augment_dataset(dataset):
@@ -110,8 +121,11 @@ def main():
     train_dataset = augment_dataset(train_dataset)
     print("Augmentation complete!")
 
+    # After augmentation:
+    print(f"Augmented Train: {len(train_dataset)} samples (should be 4x original)")
+
     # DataLoaders
-    batch_size = 32
+    batch_size = 8
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
@@ -121,13 +135,14 @@ def main():
     criterion = YOLOLoss()
     model = LittleYOLO()
     
-    learning_rate = 0.001
+    learning_rate = 0.0001
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     print("Using Adam optimizer with learning rate:", learning_rate)
     print("Batch size:", batch_size)
     
     print(f'\nTraining Model')
-    model = train_model(model, train_loader, val_loader, device, criterion, optimizer, save=True)
+    model = train_model(model, train_loader, val_loader, device, criterion, optimizer, max_epochs=30, save=True)
+    summary(model, input_size=(1, 3, 112, 112))
     
     # First evaluate on validation set
     val_metrics = evaluate_model(model, val_loader, device, criterion)
