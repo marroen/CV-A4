@@ -67,6 +67,25 @@ def main():
         random_state=42
     )
 
+    # Assuming `df` is your DataFrame loaded via `parse_xml_annotations`
+    train_cat_count = (train_df['label'] == 'cat').sum()
+    train_dog_count = (train_df['label'] == 'dog').sum()
+    print(f"Cats: {train_cat_count}, Dogs: {train_dog_count}")
+    train_ratio = train_cat_count / train_dog_count
+    print("train ratio:", train_ratio)
+
+    val_cat_count = (val_df['label'] == 'cat').sum()
+    val_dog_count = (val_df['label'] == 'dog').sum()
+    print(f"Cats: {val_cat_count}, Dogs: {val_dog_count}")
+    val_ratio = val_cat_count / val_dog_count
+    print("val ratio:", val_ratio)
+
+    test_cat_count = (test_df['label'] == 'cat').sum()
+    test_dog_count = (test_df['label'] == 'dog').sum()
+    print(f"Cats: {test_cat_count}, Dogs: {test_dog_count}")
+    test_ratio = test_cat_count / test_dog_count
+    print("test ratio:", test_ratio)
+
     # Create datasets
     img_dir = os.path.join(dataset_path, "images")  # Folder containing images
     train_dataset = DogCatDataset(train_df, img_dir, transform=transform)
@@ -135,13 +154,13 @@ def main():
     criterion = YOLOLoss()
     model = LittleYOLO()
     
-    learning_rate = 0.0001
+    learning_rate = 0.001
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     print("Using Adam optimizer with learning rate:", learning_rate)
     print("Batch size:", batch_size)
     
     print(f'\nTraining Model')
-    model = train_model(model, train_loader, val_loader, device, criterion, optimizer, max_epochs=30, save=True)
+    model = train_model(model, train_loader, val_loader, device, criterion, optimizer, max_epochs=30, save=False)
     summary(model, input_size=(1, 3, 112, 112))
     
     # First evaluate on validation set

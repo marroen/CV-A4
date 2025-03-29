@@ -143,7 +143,7 @@ def evaluate_model(model, loader, device, criterion):
     avg_noobj = noobj_loss / num_batches
     
     # Calculate mAP
-    mean_ap = calculate_map(all_preds, all_targets)
+    mean_ap = calculate_map(all_preds, all_targets, iou_threshold=0.5)
     
     return {
         'total_loss': avg_loss,

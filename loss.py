@@ -16,17 +16,17 @@ class YOLOLoss(nn.Module):
         """Calculate IoU between two sets of boxes (x_center, y_center, w, h)"""
         # Convert to (x1, y1, x2, y2)
         box1 = torch.stack([
-            box1[..., 0] - box1[..., 2]/2,
-            box1[..., 1] - box1[..., 3]/2,
-            box1[..., 0] + box1[..., 2]/2,
-            box1[..., 1] + box1[..., 3]/2,
+            box1[..., 0] - box1[..., 2]/2, # x1
+            box1[..., 1] - box1[..., 3]/2, # y1
+            box1[..., 0] + box1[..., 2]/2, # x2
+            box1[..., 1] + box1[..., 3]/2, # y2
         ], dim=-1)
         
         box2 = torch.stack([
-            box2[..., 0] - box2[..., 2]/2,
-            box2[..., 1] - box2[..., 3]/2,
-            box2[..., 0] + box2[..., 2]/2,
-            box2[..., 1] + box2[..., 3]/2,
+            box2[..., 0] - box2[..., 2]/2, # x1
+            box2[..., 1] - box2[..., 3]/2, # y1
+            box2[..., 0] + box2[..., 2]/2, # x2
+            box2[..., 1] + box2[..., 3]/2, # y2
         ], dim=-1)
 
         # Calculate intersection area
