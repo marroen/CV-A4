@@ -7,7 +7,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
 from torch.utils.data import Dataset, DataLoader
 
-from model import LittleYOLO
+from models import LittleYOLO
 from loss import YOLOLoss
 from train_eval_fns import train_model, evaluate_model
 import xml.etree.ElementTree as ET
