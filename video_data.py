@@ -1,7 +1,10 @@
 import cv2 as cv
-from PIL import Image
 import torch
+import time
+import matplotlib.pyplot as plt
+
 from torchvision import transforms
+from PIL import Image
 
 video_path = "video.mp4"
 vid = cv.VideoCapture(video_path)
@@ -42,10 +45,6 @@ print(f"Grabbed {grabbed_frames} frames from video\n")
 video_tensor_batch = torch.stack(processed_frames)
 
 # EXAMPLE CODE for displaying frames
-import matplotlib.pyplot as plt
-import time
-import torch
-
 def display_video_frames(tensor_batch, delay=0.5):
 
     # Define transform
@@ -68,4 +67,4 @@ def display_video_frames(tensor_batch, delay=0.5):
 
     plt.close()
 
-display_video_frames(video_tensor_batch, delay=0.5)
+#display_video_frames(video_tensor_batch, delay=0.5)

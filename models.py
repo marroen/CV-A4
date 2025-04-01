@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torchvision.models import resnet18, ResNet18_Weights
 
 # Model definition for the specified little YOLO model
 class LittleYOLO(nn.Module):
@@ -88,8 +89,8 @@ class LittleYOLO_ResNet18(nn.Module):
         # Set the resnet backbone with the last FC layer stripped
         self.resnet_backbone = nn.Sequential(*list(pretrained_resnet.children())[:-1])
 
-        # Flatten layer: resnet 112x112 input -> output 512 * 4 * 4
-        self.flatten_size = 512 * 4 * 4
+        # Flatten layer: resnet 112x112 input -> output 512
+        self.flatten_size = 512
 
         # Dropout
         self.dropout = nn.Dropout(0.5)

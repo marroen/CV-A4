@@ -1,25 +1,114 @@
-from dataset import check_dataset, parse_xml_annotations, DogCatDataset, visualize_sample
 import os
-from torchvision import transforms
 import torch
 import torch.nn as nn
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report
-from torch.utils.data import Dataset, DataLoader
-
-from models import LittleYOLO
-from loss import YOLOLoss
-from train_eval_fns import train_model, evaluate_model
+import matplotlib.pyplot as plt
 import xml.etree.ElementTree as ET
 
+from torchvision import transforms
 from torchinfo import summary
+from torch.utils.data import Dataset, DataLoader
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report
+from matplotlib import patches
 
+from dataset import check_dataset, parse_xml_annotations, DogCatDataset, visualize_sample
+from video_data import video_tensor_batch
+from models import LittleYOLO, LittleYOLO_ResNet18
+from loss import YOLOLoss
+from train_eval_fns import train_model, evaluate_model
 
 def yolo_collate(batch):
     """Custom collate function for YOLO-formatted batches"""
     images = [item[0] for item in batch]  # List of image tensors
     targets = [item[1] for item in batch] # List of YOLO target tensors
     return torch.stack(images), torch.stack(targets)
+
+# Visualize processed images with ground truth and predicted bboxes overlayed
+def display_processed_images(dataset, model, device):
+
+    model.eval()
+
+    for i in range(len(dataset)):
+        with torch.no_grad():
+            image, target = dataset[i]
+            input_img = image.unsqueeze(0).to(device)
+
+            pred = model(input_img)
+            pred = pred[0].cpu()
+
+        # Reshape predicted bbox (S, S, 5 + num_classes)
+        S = 7
+        pred = pred.view(S, S, 5 + 2)
+
+        # Denormalize image
+        std = torch.tensor([0.229, 0.224, 0.225])
+        mean = torch.tensor([0.485, 0.456, 0.406])
+        img_disp = image.clone().detach() * std[:, None, None] + mean[:, None, None]
+        img_disp = img_disp.permute(1, 2, 0).numpy().clip(0, 1)
+
+        img_size = 112
+        cell_size = img_size / S
+
+        # Extract ground truth bbox from target
+        obj_cells = torch.where(target[..., 4] == 1)
+        if len(obj_cells[0]) > 0:
+            cell_y_gt, cell_x_gt = obj_cells[0][0].item(), obj_cells[1][0].item()
+            gt_box = target[cell_y_gt, cell_x_gt, :4].numpy()
+
+            # Convert cell-relative bbox to image coordinates
+            gt_x_center = cell_x_gt * cell_size + gt_box[0] * cell_size
+            gt_y_center = cell_y_gt * cell_size + gt_box[1] * cell_size
+            gt_width = gt_box[2] * img_size
+            gt_height = gt_box[3] * img_size
+
+            gt_xmin = int(gt_x_center - gt_width / 2)
+            gt_ymin = int(gt_y_center - gt_height / 2)
+            gt_xmax = int(gt_x_center + gt_width / 2)
+            gt_ymax = int(gt_y_center + gt_height / 2)
+        
+        else:
+            print("No ground truth bbox!")
+            return
+
+        # Extract predicted bbox
+        pred_confidences = pred[..., 4]
+        cell_conf, idx = torch.max(pred_confidences.view(-1), dim=0)
+        cell_index = idx.item()
+        cell_y_pred = cell_index // S
+        cell_x_pred = cell_index % S
+        pred_box = pred[cell_y_pred, cell_x_pred, :4].numpy()
+        pred_class_idx = torch.argmax(pred[cell_y_pred, cell_x_pred, 5:]).item()
+        pred_label = 'Cat' if pred_class_idx == 0 else 'Dog'
+
+        # Convert predicted bbox from cell coordinates to image coordinates
+        pred_x_center = cell_x_pred * cell_size + pred_box[0] * cell_size
+        pred_y_center = cell_y_pred * cell_size + pred_box[1] * cell_size
+        pred_width = pred_box[2] * img_size
+        pred_height = pred_box[3] * img_size
+
+        pred_xmin = int(pred_x_center - pred_width / 2)
+        pred_ymin = int(pred_y_center - pred_height / 2)
+        pred_xmax = int(pred_x_center + pred_width / 2)
+        pred_ymax = int(pred_y_center + pred_height / 2)
+
+        # Draw bboxes
+        fig, ax = plt.subplots(1)
+        ax.imshow(img_disp)
+        
+        # Blue ground truth bbox
+        rect_gt = patches.Rectangle((gt_xmin, gt_ymin), gt_xmax - gt_xmin, gt_ymax - gt_ymin,
+                                    linewidth=2, edgecolor='blue', facecolor='none')
+        ax.add_patch(rect_gt)
+
+        # Red predicted bbox
+        rect_pred = patches.Rectangle((pred_xmin, pred_ymin), pred_xmax - pred_xmin, pred_ymax - pred_ymin,
+                                    linewidth=2, edgecolor='red', facecolor='none')
+        ax.add_patch(rect_pred)
+
+        # State predicted class
+        ax.set_title(f"Prediction: {pred_label}")
+        plt.axis('off')
+        plt.show()
 
 def main():
     print("Hello World!")
@@ -98,8 +187,8 @@ def main():
     print(f"Val: {len(val_dataset)} samples")
     print(f"Test: {len(test_dataset)} samples")
     
-    print("\nOriginal Train Sample:")
-    visualize_sample(train_dataset, index=0)
+    #print("\nOriginal Train Sample:")
+    #visualize_sample(train_dataset, index=0)
 
     # CHOICE TASK 6
     # Takes a dataset, and adds a color jittered, autoconstrasted, and grayscaled version of each image to the dataset
@@ -186,6 +275,9 @@ def main():
     No-Object Loss: {test_metrics['noobj_loss']:.4f}
     mAP@0.5: {test_metrics['mAP']:.4f}
     """)
+
+    # Display test images with bboxes
+    display_processed_images(test_dataset, model, device)
     
 
 if __name__ == "__main__":
