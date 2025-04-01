@@ -13,6 +13,10 @@ from train_eval_fns import train_model, evaluate_model
 import xml.etree.ElementTree as ET
 
 from torchinfo import summary
+import numpy as np
+import matplotlib.pyplot as plt
+
+from example import visualize_batch
 
 
 def yolo_collate(batch):
@@ -99,7 +103,7 @@ def main():
     print(f"Test: {len(test_dataset)} samples")
     
     print("\nOriginal Train Sample:")
-    visualize_sample(train_dataset, index=0)
+    #visualize_sample(train_dataset, index=0)
 
     # CHOICE TASK 6
     # Takes a dataset, and adds a color jittered, autoconstrasted, and grayscaled version of each image to the dataset
@@ -137,7 +141,7 @@ def main():
         return torch.utils.data.TensorDataset(augmented_images, augmented_targets)
     
     print("Augmenting training data: please wait...")
-    train_dataset = augment_dataset(train_dataset)
+    #train_dataset = augment_dataset(train_dataset)
     print("Augmentation complete!")
 
     # After augmentation:
@@ -148,6 +152,8 @@ def main():
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+
+    #visualize_batch(train_loader)
 
     # Define training attributes
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -160,7 +166,7 @@ def main():
     print("Batch size:", batch_size)
     
     print(f'\nTraining Model')
-    model = train_model(model, train_loader, val_loader, device, criterion, optimizer, max_epochs=30, save=False)
+    model = train_model(model, train_loader, val_loader, device, criterion, optimizer, max_epochs=1, save=True)
     summary(model, input_size=(1, 3, 112, 112))
     
     # First evaluate on validation set
@@ -186,7 +192,6 @@ def main():
     No-Object Loss: {test_metrics['noobj_loss']:.4f}
     mAP@0.5: {test_metrics['mAP']:.4f}
     """)
-    
 
 if __name__ == "__main__":
     main()
