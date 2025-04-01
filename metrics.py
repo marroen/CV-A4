@@ -2,14 +2,8 @@ from collections import defaultdict
 import torch
 import numpy as np
 
+# Compute IoU between two bounding boxes
 def compute_iou(box1, box2):
-    """Calculate Intersection over Union between two bounding boxes
-    Args:
-        box1: [x_center, y_center, width, height] (normalized 0-1)
-        box2: [x_center, y_center, width, height] (normalized 0-1)
-    Returns:
-        iou: Intersection over Union score
-    """
     # Convert from center coordinates to corner coordinates
     box1 = [
         box1[0] - box1[2]/2,  # x1
@@ -43,13 +37,8 @@ def compute_iou(box1, box2):
     
     return intersection / union
 
+# Process model output and prepare for mAP calculation
 def process_predictions(preds, confidence_threshold=0.3, S=7, B=1, C=2):
-    """
-    Convert raw model output to detection format
-    Args:
-        preds: Tensor of shape [batch, S*S*(5*B + C)] 
-               or [batch, S, S, 5*B + C]
-    """
     processed = []
     batch_size = preds.size(0)
     
@@ -81,17 +70,8 @@ def process_predictions(preds, confidence_threshold=0.3, S=7, B=1, C=2):
     
     return processed
 
+# Process ground truth targets and prepare for mAP calculation
 def process_targets(targets):
-    """
-    Convert YOLO-formatted ground truth to mAP evaluation format
-    
-    Args:
-        targets: Tensor of shape [batch_size, S, S, 5+C] 
-                 (YOLO format from your dataset)
-    
-    Returns:
-        list: Ground truth entries as (class_id, box, image_id)
-    """
     gt_entries = []
     batch_size = targets.size(0)
     
@@ -112,8 +92,8 @@ def process_targets(targets):
     
     return gt_entries
 
+# Find confusion matrix values and calculate mAP
 def calculate_map(predictions, targets, iou_threshold=0.5):
-    """Calculate mean Average Precision for object detection"""
     aps = []
     
     # Group by class
