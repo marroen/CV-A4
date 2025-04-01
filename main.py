@@ -23,6 +23,41 @@ def yolo_collate(batch):
     targets = [item[1] for item in batch] # List of YOLO target tensors
     return torch.stack(images), torch.stack(targets)
 
+# CHOICE TASK 6
+# Takes a dataset, and adds a color jittered, autoconstrasted, and grayscaled version of each image to the dataset
+def augment_dataset(dataset):
+    augmented_images = []
+    augmented_targets = []
+
+    color_jitter = transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2)
+    
+    # Apply transformations on each image-target pair
+    for image, yolo_target in dataset:
+        # Original image
+        augmented_images.append(image)
+        augmented_targets.append(yolo_target)
+        
+        # Color jittered
+        jittered_img = color_jitter(image)
+        augmented_images.append(jittered_img)
+        augmented_targets.append(yolo_target)
+        
+        # Autocontrast
+        contrasted_img = transforms.functional.autocontrast(image)
+        augmented_images.append(contrasted_img)
+        augmented_targets.append(yolo_target)
+        
+        # Grayscaled (keep 3 channels)
+        grayscale_img = transforms.functional.rgb_to_grayscale(image, num_output_channels=3)
+        augmented_images.append(grayscale_img)
+        augmented_targets.append(yolo_target)
+
+    # Convert to tensors and create dataset
+    augmented_images = torch.stack(augmented_images)
+    augmented_targets = torch.stack(augmented_targets)
+    
+    return torch.utils.data.TensorDataset(augmented_images, augmented_targets)
+
 # Visualize processed images with ground truth and predicted bboxes overlayed
 def display_processed_images(dataset, model, device):
 
@@ -189,43 +224,9 @@ def main():
     
     #print("\nOriginal Train Sample:")
     #visualize_sample(train_dataset, index=0)
-
-    # CHOICE TASK 6
-    # Takes a dataset, and adds a color jittered, autoconstrasted, and grayscaled version of each image to the dataset
-    def augment_dataset(dataset):
-        augmented_images = []
-        augmented_targets = []
-
-        color_jitter = transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2)
-        
-        # Apply transformations on each image-target pair
-        for image, yolo_target in dataset:
-            # Original image
-            augmented_images.append(image)
-            augmented_targets.append(yolo_target)
-            
-            # Color jittered
-            jittered_img = color_jitter(image)
-            augmented_images.append(jittered_img)
-            augmented_targets.append(yolo_target)
-            
-            # Autocontrast
-            contrasted_img = transforms.functional.autocontrast(image)
-            augmented_images.append(contrasted_img)
-            augmented_targets.append(yolo_target)
-            
-            # Grayscaled (keep 3 channels)
-            grayscale_img = transforms.functional.rgb_to_grayscale(image, num_output_channels=3)
-            augmented_images.append(grayscale_img)
-            augmented_targets.append(yolo_target)
-
-        # Convert to tensors and create dataset
-        augmented_images = torch.stack(augmented_images)
-        augmented_targets = torch.stack(augmented_targets)
-        
-        return torch.utils.data.TensorDataset(augmented_images, augmented_targets)
     
-    print("Augmenting training data: please wait...")
+    # Augment dataset
+    print("\nAugmenting training data: please wait...")
     train_dataset = augment_dataset(train_dataset)
     print("Augmentation complete!")
 
@@ -241,7 +242,18 @@ def main():
     # Define training attributes
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     criterion = YOLOLoss()
-    model = LittleYOLO()
+
+    print("\nWhich model would you like to run?")
+    print("   1 -> LittleYOLO")
+    print("   2 -> LittleYOLO_ResNet18")
+    user_input = input("Choose wisely: ")
+
+    if user_input == 2:
+        model = LittleYOLO()
+        print("\nLittleYOLO selected")
+    else:
+        model = LittleYOLO_ResNet18()
+        print("\nLittleYOLO_ResNet18 selected")
     
     learning_rate = 0.001
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
@@ -249,7 +261,7 @@ def main():
     print("Batch size:", batch_size)
     
     print(f'\nTraining Model')
-    model = train_model(model, train_loader, val_loader, device, criterion, optimizer, max_epochs=30, save=False)
+    model = train_model(model, train_loader, val_loader, device, criterion, optimizer, max_epochs=20, save=False)
     summary(model, input_size=(1, 3, 112, 112))
     
     # First evaluate on validation set
