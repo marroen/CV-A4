@@ -1,2 +1,2 @@
 epoch,train_loss,val_loss,val_map,box_loss,conf_loss,class_loss,noobj_loss
-1,6.7031,6.5634,0.3316,11.8241,20.1834,13.9999,6.2851
+1,6.7515,0.1489,0.2494,0.2903,0.3343,0.1123,0.1569

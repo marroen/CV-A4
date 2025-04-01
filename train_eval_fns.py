@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 import csv
 
-from metrics import compute_iou, process_predictions, process_targets, calculate_map, calculate_map2
+from metrics import compute_iou, process_predictions, process_targets, calculate_map
 
 # Train model
 def train_model(model, train_loader, val_loader, device, criterion, optimizer, max_epochs=3, patience=5, save=False):
@@ -144,7 +144,6 @@ def evaluate_model(model, loader, device, criterion):
     avg_noobj = noobj_loss / num_batches
     
     # Calculate mAP
-    calculate_map2(all_preds, all_targets, iou_threshold=0.5)
     mean_ap = calculate_map(all_preds, all_targets, iou_threshold=0.5)
     
     return {
