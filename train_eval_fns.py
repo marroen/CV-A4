@@ -2,7 +2,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import csv
-from metrics import compute_iou, process_predictions, process_targets, calculate_map
+
+from metrics import compute_iou, process_predictions, process_targets, calculate_map, calculate_map2
 
 # Train model
 def train_model(model, train_loader, val_loader, device, criterion, optimizer, max_epochs=3, patience=5, save=False):
@@ -119,14 +120,14 @@ def evaluate_model(model, loader, device, criterion):
             outputs = model(inputs)
             
             # Calculate loss components
-            loss, b_loss, c_loss, cl_loss, n_loss = criterion(outputs, targets)
+            total_loss, box_loss, conf_loss, class_loss, noobj_loss = criterion(outputs, targets)
             
             # Accumulate losses
-            total_loss += loss.item()
-            box_loss += b_loss.item()
-            conf_loss += c_loss.item()
-            class_loss += cl_loss.item()
-            noobj_loss += n_loss.item()
+            total_loss += total_loss.item()
+            box_loss += box_loss.item()
+            conf_loss += conf_loss.item()
+            class_loss += class_loss.item()
+            noobj_loss += noobj_loss.item()
             
             # Process predictions and targets for mAP calculation
             batch_preds = process_predictions(outputs)
@@ -143,6 +144,7 @@ def evaluate_model(model, loader, device, criterion):
     avg_noobj = noobj_loss / num_batches
     
     # Calculate mAP
+    calculate_map2(all_preds, all_targets, iou_threshold=0.5)
     mean_ap = calculate_map(all_preds, all_targets, iou_threshold=0.5)
     
     return {
