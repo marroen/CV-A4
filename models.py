@@ -43,7 +43,7 @@ class LittleYOLO(nn.Module):
         # FC layer
         self.fc1 = nn.Linear(self.flatten_size, 512)
 
-        # Output layer: 7x7 grid with 7 values per cell (2 class scores + 5 bbox values)
+        # Output layer
         self.fc_out = nn.Linear(512, 343)
 
         # Kaiming Initialization
