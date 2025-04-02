@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 import csv
 
-from metrics import compute_iou, process_predictions, process_targets, calculate_map
+from metrics import compute_iou, process_predictions, process_targets, calculate_map, calculate_confusion_matrix
 
 # Train model
 def train_model(model, train_loader, val_loader, device, criterion, optimizer, max_epochs=3, patience=5, save=False):
@@ -12,13 +12,31 @@ def train_model(model, train_loader, val_loader, device, criterion, optimizer, m
     epochs_no_improve = 0
     best_weights = None
 
+    '''
+                        epoch+1,
+                    f"{avg_train_loss:.4f}",
+                    f"{train_total_loss:.4f}",
+                    f"{train_box_loss:.4f}",
+                    f"{train_conf_loss:.4f}",
+                    f"{train_class_loss:.4f}",
+                    f"{train_noobj_loss:.4f}",
+                    f"{val_total_loss:.4f}",
+                    f"{val_metrics['box_loss']:.4f}",
+                    f"{val_metrics['conf_loss']:.4f}",
+                    f"{val_metrics['class_loss']:.4f}",
+                    f"{val_metrics['noobj_loss']:.4f}",
+                    f"{val_map:.4f}"
+    '''
+
     if save:
         # Update CSV header for detection metrics
         csv_filename = f"{model.__class__.__name__.lower()}_metrics.csv"
         with open(csv_filename, 'w', newline='') as f:
             writer = csv.writer(f)
-            writer.writerow(['epoch', 'train_loss', 'val_loss', 'val_map',
-                            'box_loss', 'conf_loss', 'class_loss', 'noobj_loss'])
+            writer.writerow(['epoch', 'avg_train_loss', 'train_total_loss', 'train_box_loss',
+                            'train_conf_loss', 'train_class_loss', 'train_class_loss', 'train_noobj_loss',
+                            'val_total_loss', 'val_box_loss', 'val_conf_loss', 'val_class_loss',
+                            'val_noobj_loss', 'val_map'])
 
     # Training loop with early stopping
     for epoch in range(max_epochs):
@@ -55,15 +73,19 @@ def train_model(model, train_loader, val_loader, device, criterion, optimizer, m
 
         # Validation phase
         val_metrics = evaluate_model(model, val_loader, device, criterion)
-        val_loss = val_metrics['total_loss']
-        val_map = val_metrics['mAP']
+        val_total_loss = val_metrics['total_loss']
+        val_box_loss = val_metrics['box_loss']
+        val_conf_loss = val_metrics['conf_loss']
+        val_class_loss = val_metrics['class_loss']
+        val_noobj_loss = val_metrics['noobj_loss']
+        val_map = val_metrics['map']
 
         # Early stopping logic
-        if val_loss < best_loss - 0.001:  # Threshold for meaningful improvement
-            best_loss = val_loss
+        if val_total_loss < best_loss - 0.001:  # Threshold for meaningful improvement
+            best_loss = val_total_loss
             epochs_no_improve = 0
             best_weights = model.state_dict().copy()
-            print(f"Validation loss improved to {val_loss:.4f}")
+            print(f"Validation loss improved to {val_total_loss:.4f}")
         else:
             epochs_no_improve += 1
             print(f"No improvement for {epochs_no_improve}/{patience} epochs")
@@ -75,17 +97,26 @@ def train_model(model, train_loader, val_loader, device, criterion, optimizer, m
                 writer.writerow([
                     epoch+1,
                     f"{avg_train_loss:.4f}",
-                    f"{val_loss:.4f}",
-                    f"{val_map:.4f}",
+                    f"{train_total_loss:.4f}",
+                    f"{train_box_loss:.4f}",
+                    f"{train_conf_loss:.4f}",
+                    f"{train_class_loss:.4f}",
+                    f"{train_noobj_loss:.4f}",
+                    f"{val_total_loss:.4f}",
                     f"{val_metrics['box_loss']:.4f}",
                     f"{val_metrics['conf_loss']:.4f}",
                     f"{val_metrics['class_loss']:.4f}",
-                    f"{val_metrics['noobj_loss']:.4f}"
+                    f"{val_metrics['noobj_loss']:.4f}",
+                    f"{val_map:.4f}"
                 ])
 
         # Print epoch summary
         print(f"\nEpoch {epoch+1}/{max_epochs}")
-        print(f"Train Loss: {avg_train_loss:.4f} | Val Loss: {val_loss:.4f}")
+        print(f"Train Loss: {avg_train_loss:.4f} | Val Loss: {val_total_loss:.4f}")
+        print(f"Train Box Loss: {avg_train_box:.4f} | Val Box Loss: {val_box_loss:.4f}")
+        print(f"Train Conf Loss: {avg_train_conf:.4f} | Val Conf Loss: {val_conf_loss:.4f}")
+        print(f"Train Class Loss: {avg_train_class:.4f} | Val Class Loss: {val_class_loss:.4f}")
+        print(f"Train No-Obj Loss: {avg_train_noobj:.4f} | Val No-Obj Loss: {val_noobj_loss:.4f}")
         print(f"Val mAP@0.5: {val_map:.4f}")
         print("-" * 50)
 
@@ -102,7 +133,8 @@ def train_model(model, train_loader, val_loader, device, criterion, optimizer, m
     print('Training finished')
     return model
 
-def evaluate_model(model, loader, device, criterion):
+# Evaluate model
+def evaluate_model(model, loader, device, criterion, iou_threshold=0.5):
     model.eval()
     total_loss = 0.0
     box_loss = 0.0
@@ -143,8 +175,21 @@ def evaluate_model(model, loader, device, criterion):
     avg_class = class_loss / num_batches
     avg_noobj = noobj_loss / num_batches
     
-    # Calculate mAP
-    mean_ap = calculate_map(all_preds, all_targets, iou_threshold=0.5)
+    # Calculate metrics
+    map = calculate_map(all_preds, all_targets, iou_threshold)
+    metrics_all = calculate_confusion_matrix(all_preds, all_targets)
+    metrics = metrics_all['total']
+    confusion_matrix_per_class = metrics_all['classes']
+    cross_errors = metrics_all['cross_errors']
+
+    # Precision calculation
+    precision = metrics['tp'] / (metrics['tp'] + metrics['fp']) if (metrics['tp'] + metrics['fp']) > 0 else 0.0
+
+    # Recall calculation 
+    recall = metrics['tp'] / (metrics['tp'] + metrics['fn']) if (metrics['tp'] + metrics['fn']) > 0 else 0.0
+
+    print(f"Precision: {precision:.2f}")
+    print(f"Recall: {recall:.2f}")
     
     return {
         'total_loss': avg_loss,
@@ -152,5 +197,8 @@ def evaluate_model(model, loader, device, criterion):
         'conf_loss': avg_conf,
         'class_loss': avg_class,
         'noobj_loss': avg_noobj,
-        'mAP': mean_ap
+        'map': map['map'],
+        'cat_confusion_matrix': confusion_matrix_per_class['cat'],
+        'dog_confusion_matrix': confusion_matrix_per_class['dog'],
+        'cross_errors': cross_errors
     }
