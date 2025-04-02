@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+# YOLO Loss function
 class YOLOLoss(nn.Module):
     def __init__(self, S=7, B=1, C=2, λ_coord=5.0, λ_noobj=0.5):
         super().__init__()
