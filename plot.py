@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from train_eval_fns import evaluate_model
 
 # Data from training logs
 epochs = np.arange(1, 17)
@@ -79,3 +80,32 @@ plt.legend()
 
 plt.tight_layout()
 plt.show()
+
+# Iterate over IoU thresholds (mAP scores as confidence goes to 1)
+def plot_iou_metrics(model, loader, device, criterion):
+    iou_thresholds = np.arange(0.0, 1.05, 0.05)  # 0.0, 0.05, ..., 1.0
+    precisions = []
+    maps = []
+
+    for iou_thresh in iou_thresholds:
+        print(f"Evaluating IoU threshold: {iou_thresh:.2f}")
+        metrics = evaluate_model(model, loader, device, criterion, iou_threshold=iou_thresh)
+        
+        # Calculate precision
+        tp = metrics['cat_confusion_matrix']['tp'] + metrics['dog_confusion_matrix']['tp']
+        fp = metrics['cat_confusion_matrix']['fp'] + metrics['dog_confusion_matrix']['fp']
+        precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+        
+        precisions.append(precision)
+        maps.append(metrics['map'])
+
+    # Plotting
+    plt.figure(figsize=(10, 6))
+    plt.plot(iou_thresholds, precisions, label='Precision')
+    plt.plot(iou_thresholds, maps, label='mAP')
+    plt.xlabel('IoU Threshold')
+    plt.ylabel('Score')
+    plt.title('Precision and mAP vs. IoU Threshold')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
