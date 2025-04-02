@@ -6,7 +6,9 @@ import xml.etree.ElementTree as ET
 
 from torchvision import transforms
 from torchinfo import summary
+import torchvision.transforms.functional as F
 import numpy as np
+import random
 import matplotlib.pyplot as plt
 
 from example import visualize_batch
@@ -26,8 +28,6 @@ from plot import plot_iou_metrics
 def augment_dataset(dataset):
     augmented_images = []
     augmented_targets = []
-
-    color_jitter = transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2)
     
     # Apply transformations on each image-target pair
     for image, yolo_target in dataset:
@@ -35,18 +35,24 @@ def augment_dataset(dataset):
         augmented_images.append(image)
         augmented_targets.append(yolo_target)
         
-        # Color jittered
-        jittered_img = color_jitter(image)
-        augmented_images.append(jittered_img)
+        # Random HSV adjustments
+        h_change = random.uniform(-0.1, 0.1)
+        s_change = random.uniform(0.8, 1.2)
+        v_change = random.uniform(0.8, 1.2)
+        color_img = F.adjust_hue(image, h_change)
+        color_img = F.adjust_saturation(color_img, s_change)
+        color_img = F.adjust_brightness(color_img, v_change)
+        augmented_images.append(color_img)
         augmented_targets.append(yolo_target)
         
-        # Autocontrast
-        contrasted_img = transforms.functional.autocontrast(image)
-        augmented_images.append(contrasted_img)
+        # Random gaussian blur
+        sigma = random.uniform(0.1, 2.0)
+        blurred_img = F.gaussian_blur(image, kernel_size=3, sigma=sigma)
+        augmented_images.append(blurred_img)
         augmented_targets.append(yolo_target)
         
-        # Grayscaled (keep 3 channels)
-        grayscale_img = transforms.functional.rgb_to_grayscale(image, num_output_channels=3)
+        # Grayscale
+        grayscale_img = F.rgb_to_grayscale(image, num_output_channels=3)
         augmented_images.append(grayscale_img)
         augmented_targets.append(yolo_target)
 
@@ -62,10 +68,13 @@ def display_processed_images(dataset, model, device):
     model.eval()
 
     for i in range(len(dataset)):
+
+        # Get next image
         with torch.no_grad():
             image, target = dataset[i]
             input_img = image.unsqueeze(0).to(device)
 
+            # Get the predicted bbox
             pred = model(input_img)
             pred = pred[0].cpu()
 
@@ -189,7 +198,6 @@ def main():
         random_state=42
     )
 
-    # Assuming `df` is your DataFrame loaded via `parse_xml_annotations`
     train_cat_count = (train_df['label'] == 'cat').sum()
     train_dog_count = (train_df['label'] == 'dog').sum()
     print(f"Cats: {train_cat_count}, Dogs: {train_dog_count}")
@@ -220,43 +228,8 @@ def main():
     print(f"Val: {len(val_dataset)} samples")
     print(f"Test: {len(test_dataset)} samples")
     
-    print("\nOriginal Train Sample:")
+    #print("\nOriginal Train Sample:")
     #visualize_sample(train_dataset, index=0)
-
-    # CHOICE TASK 6
-    # Takes a dataset, and adds a color jittered, autoconstrasted, and grayscaled version of each image to the dataset
-    def augment_dataset(dataset):
-        augmented_images = []
-        augmented_targets = []
-
-        color_jitter = transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2)
-        
-        # Apply transformations on each image-target pair
-        for image, yolo_target in dataset:
-            # Original image
-            augmented_images.append(image)
-            augmented_targets.append(yolo_target)
-            
-            # Color jittered
-            jittered_img = color_jitter(image)
-            augmented_images.append(jittered_img)
-            augmented_targets.append(yolo_target)
-            
-            # Autocontrast
-            contrasted_img = transforms.functional.autocontrast(image)
-            augmented_images.append(contrasted_img)
-            augmented_targets.append(yolo_target)
-            
-            # Grayscaled (keep 3 channels)
-            grayscale_img = transforms.functional.rgb_to_grayscale(image, num_output_channels=3)
-            augmented_images.append(grayscale_img)
-            augmented_targets.append(yolo_target)
-
-        # Convert to tensors and create dataset
-        augmented_images = torch.stack(augmented_images)
-        augmented_targets = torch.stack(augmented_targets)
-        
-        return torch.utils.data.TensorDataset(augmented_images, augmented_targets)
     
     '''
     print("Augmenting training data: please wait...")
