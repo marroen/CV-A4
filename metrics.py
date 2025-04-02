@@ -25,9 +25,10 @@ def compute_iou(box1, box2):
     x_right = min(box1[2], box2[2])
     y_bottom = min(box1[3], box2[3])
     
+    # No intersection
     if x_right < x_left or y_bottom < y_top:
         return 0.0
-        
+    
     intersection = (x_right - x_left) * (y_bottom - y_top)
     
     # Calculate union area
@@ -102,16 +103,19 @@ def calculate_map(predictions, targets, iou_threshold=0.5):
         pred_class, pred_conf, pred_box, img_id = pred
         matched = False
         
+        # Find best matching ground truth
         for gt in targets:
             gt_class, gt_box, gt_img_id = gt
             if gt_img_id != img_id:
                 continue
                 
+            # Check if IoU is above threshold and classes match
             if compute_iou(pred_box, gt_box) >= iou_threshold and pred_class == gt_class:
                 class_stats[pred_class]['tp'].append(1)
                 matched = True
                 break
-                
+        
+        # If no match, add 0 TP
         if not matched:
             class_stats[pred_class]['tp'].append(0)
         
@@ -126,11 +130,13 @@ def calculate_map(predictions, targets, iou_threshold=0.5):
         if stats['gt'] == 0:
             continue
             
+        # Sort predictions by confidence
         scores = np.array(stats['scores'])
         tp = np.array(stats['tp'])
         sort_idx = np.argsort(-scores)
         tp_sorted = tp[sort_idx]
         
+        # Calculate precision and recall
         fp_sorted = 1 - tp_sorted
         tp_cum = np.cumsum(tp_sorted)
         fp_cum = np.cumsum(fp_sorted)
@@ -138,6 +144,7 @@ def calculate_map(predictions, targets, iou_threshold=0.5):
         precision = tp_cum / (tp_cum + fp_cum + 1e-6)
         recall = tp_cum / (stats['gt'] + 1e-6)
         
+        # Calculate AP using 11-point interpolation
         ap = 0.0
         for t in np.arange(0, 1.1, 0.1):
             mask = recall >= t
@@ -185,12 +192,14 @@ def calculate_confusion_matrix(predictions, targets, iou_threshold=0.5):
             if gt_img_id != img_id:
                 continue
 
+            # Calculate IoU
             iou = compute_iou(pred_box, gt_box)
             gt_class = 'dog' if gt_class_idx == 1 else 'cat'
             gt_cell_x = int(gt_box[0] * 7)
             gt_cell_y = int(gt_box[1] * 7)
             image_data[img_id]['gt'][gt_class].add((gt_cell_x, gt_cell_y))
 
+            # Update best match
             if iou > best_iou and iou >= iou_threshold:
                 best_iou = iou
                 best_gt_key = (img_id, gt_idx)
@@ -201,6 +210,7 @@ def calculate_confusion_matrix(predictions, targets, iou_threshold=0.5):
             gt_class_idx, _, _ = targets[gt_idx]
             gt_class = 'dog' if gt_class_idx == 1 else 'cat'
 
+            # Check if GT already matched
             if best_gt_key not in matched_gt_keys:
                 if pred_class == gt_class:
                     stats['classes'][pred_class]['tp'] += 1

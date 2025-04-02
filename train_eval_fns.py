@@ -1,9 +1,7 @@
 import torch
-import torch.nn as nn
-import torch.optim as optim
 import csv
 
-from metrics import compute_iou, process_predictions, process_targets, calculate_map, calculate_confusion_matrix
+from metrics import process_predictions, process_targets, calculate_map, calculate_confusion_matrix
 
 # Train model
 def train_model(model, train_loader, val_loader, device, criterion, optimizer, max_epochs=3, patience=5, save=False):
@@ -11,22 +9,6 @@ def train_model(model, train_loader, val_loader, device, criterion, optimizer, m
     best_loss = float('inf')
     epochs_no_improve = 0
     best_weights = None
-
-    '''
-                        epoch+1,
-                    f"{avg_train_loss:.4f}",
-                    f"{train_total_loss:.4f}",
-                    f"{train_box_loss:.4f}",
-                    f"{train_conf_loss:.4f}",
-                    f"{train_class_loss:.4f}",
-                    f"{train_noobj_loss:.4f}",
-                    f"{val_total_loss:.4f}",
-                    f"{val_metrics['box_loss']:.4f}",
-                    f"{val_metrics['conf_loss']:.4f}",
-                    f"{val_metrics['class_loss']:.4f}",
-                    f"{val_metrics['noobj_loss']:.4f}",
-                    f"{val_map:.4f}"
-    '''
 
     if save:
         # Update CSV header for detection metrics

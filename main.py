@@ -1,8 +1,6 @@
 import os
 import torch
-import torch.nn as nn
 import matplotlib.pyplot as plt
-import xml.etree.ElementTree as ET
 
 from torchvision import transforms
 from torchinfo import summary
@@ -16,7 +14,7 @@ from example import visualize_batch
 from sklearn.model_selection import train_test_split
 from matplotlib import patches
 
-from dataset import check_dataset, parse_xml_annotations, DogCatDataset, visualize_sample
+from dataset import check_dataset, parse_xml_annotations, DogCatDataset
 from video_data import video_tensor_batch
 from models import LittleYOLO, LittleYOLO_ResNet18
 from loss import YOLOLoss
@@ -153,8 +151,6 @@ def display_processed_images(dataset, model, device):
         plt.show()
 
 def main():
-    print("Hello World!")
-    
     dataset_path = check_dataset()
 
     # Load annotations
@@ -198,6 +194,7 @@ def main():
         random_state=42
     )
 
+    # Check ratio of cats to dogs in each split
     train_cat_count = (train_df['label'] == 'cat').sum()
     train_dog_count = (train_df['label'] == 'dog').sum()
     print(f"Cats: {train_cat_count}, Dogs: {train_dog_count}")
@@ -227,9 +224,6 @@ def main():
     print(f"Train: {len(train_dataset)} samples")
     print(f"Val: {len(val_dataset)} samples")
     print(f"Test: {len(test_dataset)} samples")
-    
-    #print("\nOriginal Train Sample:")
-    #visualize_sample(train_dataset, index=0)
     
     '''
     print("Augmenting training data: please wait...")
