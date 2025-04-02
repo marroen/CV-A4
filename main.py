@@ -19,12 +19,7 @@ from video_data import video_tensor_batch
 from models import LittleYOLO, LittleYOLO_ResNet18
 from loss import YOLOLoss
 from train_eval_fns import train_model, evaluate_model
-
-def yolo_collate(batch):
-    """Custom collate function for YOLO-formatted batches"""
-    images = [item[0] for item in batch]  # List of image tensors
-    targets = [item[1] for item in batch] # List of YOLO target tensors
-    return torch.stack(images), torch.stack(targets)
+from plot import plot_iou_metrics
 
 # CHOICE TASK 6
 # Takes a dataset, and adds a color jittered, autoconstrasted, and grayscaled version of each image to the dataset
@@ -263,12 +258,12 @@ def main():
         
         return torch.utils.data.TensorDataset(augmented_images, augmented_targets)
     
+    '''
     print("Augmenting training data: please wait...")
-    #train_dataset = augment_dataset(train_dataset)
-    print("Augmentation complete!")
+    train_dataset = augment_dataset(train_dataset)
+    print("Augmentation complete!")'''
 
-    # After augmentation:
-    print(f"Augmented Train: {len(train_dataset)} samples (should be 4x original)")
+    print(f"{len(train_dataset)} samples")
 
     # DataLoaders
     batch_size = 8
@@ -287,23 +282,26 @@ def main():
     print("   2 -> LittleYOLO_ResNet18")
     user_input = input("Choose wisely: ")
 
-    if user_input == 2:
+    if user_input == "1":
         model = LittleYOLO()
         print("\nLittleYOLO selected")
     else:
         model = LittleYOLO_ResNet18()
         print("\nLittleYOLO_ResNet18 selected")
     
-    learning_rate = 0.001
+    learning_rate = 0.01
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     print("Using Adam optimizer with learning rate:", learning_rate)
     print("Batch size:", batch_size)
     
     print(f'\nTraining Model')
-    model = train_model(model, train_loader, val_loader, device, criterion, optimizer, max_epochs=1, save=True)
+    model = train_model(model, train_loader, val_loader, device, criterion, optimizer, max_epochs=30, save=True)
     summary(model, input_size=(1, 3, 112, 112))
+
+    # Save the model weights after training
+    model_weights = model.to(device)
+    torch.save(model_weights.state_dict(), "littleyolo_weights.pth")
     
-    # First evaluate on validation set
     val_metrics = evaluate_model(model, val_loader, device, criterion)
     print(f"""
     Val Results:
@@ -312,7 +310,10 @@ def main():
     Confidence Loss: {val_metrics['conf_loss']:.4f}
     Class Loss: {val_metrics['class_loss']:.4f}
     No-Object Loss: {val_metrics['noobj_loss']:.4f}
-    mAP@0.5: {val_metrics['mAP']:.4f}
+    mAP@0.5: {val_metrics['map']:.4f}
+    Cat Confusion Matrix: {val_metrics['cat_confusion_matrix']}
+    Dog Confusion Matrix: {val_metrics['dog_confusion_matrix']}
+    Cross Errors: {val_metrics['cross_errors']}
     """)
     
     # Then evaluate on test set
@@ -324,8 +325,13 @@ def main():
     Confidence Loss: {test_metrics['conf_loss']:.4f}
     Class Loss: {test_metrics['class_loss']:.4f}
     No-Object Loss: {test_metrics['noobj_loss']:.4f}
-    mAP@0.5: {test_metrics['mAP']:.4f}
+    mAP@0.5: {test_metrics['map']:.4f}
+    Cat Confusion Matrix: {test_metrics['cat_confusion_matrix']}
+    Dog Confusion Matrix: {test_metrics['dog_confusion_matrix']}
+    Cross Errors: {test_metrics['cross_errors']}
     """)
+
+    plot_iou_metrics(model, test_loader, device, criterion)
 
     # Display test images with bboxes
     display_processed_images(test_dataset, model, device)
